@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>EcoRescue</title>
+
+<style>
+
+body{
+margin:0;
+background:#020617;
+color:white;
+font-family:Arial;
+text-align:center;
+}
+
+canvas{
+border:3px solid white;
+display:block;
+margin:auto;
+}
+
+#ui{
+padding:10px;
+font-size:18px;
+}
+
+#bar{
+width:200px;
+height:15px;
+background:#333;
+margin:auto;
+}
+
+#lifeBar{
+height:15px;
+background:lime;
+width:100%;
+}
+
+#screen{
+position:absolute;
+top:0;
+left:0;
+right:0;
+bottom:0;
+display:flex;
+align-items:center;
+justify-content:center;
+flex-direction:column;
+background:#000c;
+}
+
+button{
+padding:10px 20px;
+font-size:18px;
+margin-top:10px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="ui">
+
+Vida: <span id="vida">100</span> |
+Puntos: <span id="puntos">0</span> |
+Nivel: <span id="nivel">1</span>
+
+<div id="bar">
+<div id="lifeBar"></div>
+</div>
+
+</div>
+
+<canvas id="game" width="600" height="400"></canvas>
+
+<div id="screen">
+
+<h1>EcoRescue</h1>
+<button onclick="startGame()">Iniciar Juego</button>
+
+</div>
+
+<script>
+
+const canvas=document.getElementById("game")
+const ctx=canvas.getContext("2d")
+
+let vida=100
+let puntos=0
+let nivel=1
+
+let player={
+x:50,
+y:330,
+w:25,
+h:25,
+vy:0
+}
+
+let keys={}
+
+document.addEventListener("keydown",e=>keys[e.key]=true)
+document.addEventListener("keyup",e=>keys[e.key]=false)
+
+let suelo={x:0,y:360,w:600,h:40}
+
+let toxic=[]
+let recycle=[]
+let door={x:550,y:310,w:30,h:50}
+
+function nuevoNivel(){
+
+toxic=[]
+recycle=[]
+
+for(let i=0;i<nivel+2;i++){
+toxic.push({x:100+Math.random()*400,y:340})
+}
+
+for(let i=0;i<nivel+1;i++){
+recycle.push({x:100+Math.random()*400,y:340})
+}
+
+}
+
+function pregunta(){
+
+let preguntas=[
+{
+p:"¿Qué ayuda al planeta?",
+a:["Quemar basura","Reciclar","Tirar plástico"],
+c:1
+},
+{
+p:"¿Qué reduce CO2?",
+a:["Plantar árboles","Usar más autos","Plástico"],
+c:0
+}
+]
+
+let q=preguntas[Math.floor(Math.random()*preguntas.length)]
+
+let r=prompt(q.p+"\n0:"+q.a[0]+"\n1:"+q.a[1]+"\n2:"+q.a[2])
+
+if(r==q.c){
+
+puntos+=50
+nivel++
+document.getElementById("nivel").textContent=nivel
+
+if(nivel>5){
+endGame(true)
+}
+
+nuevoNivel()
+
+}else{
+
+vida-=20
+
+}
+
+}
+
+function startGame(){
+
+document.getElementById("screen").style.display="none"
+
+nuevoNivel()
+
+loop()
+
+}
+
+function endGame(win){
+
+document.getElementById("screen").style.display="flex"
+
+if(win){
+document.querySelector("#screen h1").innerText="¡Ganaste!"
+}else{
+document.querySelector("#screen h1").innerText="Game Over"
+}
+
+}
+
+function update(){
+
+if(keys["ArrowLeft"]) player.x-=4
+if(keys["ArrowRight"]) player.x+=4
+
+if(keys["ArrowUp"] && player.vy==0){
+player.vy=-10
+}
+
+player.vy+=0.5
+player.y+=player.vy
+
+if(player.y+player.h>suelo.y){
+player.y=suelo.y-player.h
+player.vy=0
+}
+
+toxic.forEach(t=>{
+if(player.x<t.x+20 &&
+player.x+player.w>t.x &&
+player.y<t.y+20 &&
+player.y+player.h>t.y){
+vida-=0.5
+}
+})
+
+recycle.forEach((r,i)=>{
+if(player.x<r.x+20 &&
+player.x+player.w>r.x &&
+player.y<r.y+20 &&
+player.y+player.h>r.y){
+puntos+=10
+recycle.splice(i,1)
+}
+})
+
+if(player.x<door.x+door.w &&
+player.x+player.w>door.x &&
+player.y<door.y+door.h &&
+player.y+player.h>door.y){
+
+pregunta()
+player.x=50
+
+}
+
+if(vida<=0){
+endGame(false)
+}
+
+document.getElementById("vida").textContent=Math.floor(vida)
+document.getElementById("puntos").textContent=puntos
+document.getElementById("lifeBar").style.width=vida+"%"
+
+}
+
+function draw(){
+
+if(nivel%2==1){
+ctx.fillStyle="#1e293b"
+}else{
+ctx.fillStyle="#14532d"
+}
+
+ctx.fillRect(0,0,canvas.width,canvas.height)
+
+ctx.fillStyle="#475569"
+ctx.fillRect(suelo.x,suelo.y,suelo.w,suelo.h)
+
+ctx.fillStyle="purple"
+toxic.forEach(t=>ctx.fillRect(t.x,t.y,20,20))
+
+ctx.fillStyle="yellow"
+recycle.forEach(r=>ctx.fillRect(r.x,r.y,20,20))
+
+ctx.fillStyle="red"
+ctx.fillRect(door.x,door.y,door.w,door.h)
+
+ctx.fillStyle="lime"
+ctx.fillRect(player.x,player.y,player.w,player.h)
+
+}
+
+function loop(){
+
+update()
+draw()
+
+requestAnimationFrame(loop)
+
+}
+
+</script>
+
+</body>
+</html>
