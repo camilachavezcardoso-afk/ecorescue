@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Eco Rescue</title>
+
+<style>
+body{
+margin:0;
+background:#020617;
+color:white;
+font-family:Arial;
+text-align:center;
+overflow:hidden;
+}
+
+canvas{
+display:block;
+margin:auto;
+border:3px solid white;
+}
+
+#ui{
+padding:10px;
+font-size:18px;
+}
+
+#bar{
+width:200px;
+height:15px;
+background:#333;
+margin:auto;
+}
+
+#lifeBar{
+height:15px;
+background:lime;
+width:100%;
+}
+
+#end{
+position:absolute;
+top:40%;
+left:50%;
+transform:translate(-50%,-50%);
+font-size:40px;
+display:none;
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="ui">
+Vida: <span id="vida">100</span> |
+Puntos: <span id="puntos">0</span> |
+Nivel: <span id="nivel">1</span>
+
+<div id="bar"><div id="lifeBar"></div></div>
+</div>
+
+<div id="end"></div>
+
+<canvas id="game" width="900" height="450"></canvas>
+
+<audio id="music" src="https://assets.mixkit.co/music/preview/mixkit-game-level-music-689.mp3" loop></audio>
+<audio id="collect" src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-bonus-alert-767.mp3"></audio>
+<audio id="hit" src="https://assets.mixkit.co/sfx/preview/mixkit-player-losing-or-failing-2042.mp3"></audio>
+
+<script>
+
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+
+const music=document.getElementById("music");
+const collectSound=document.getElementById("collect");
+const hitSound=document.getElementById("hit");
+
+music.volume=0.3;
+music.play().catch(()=>{});
+
+let vida=100;
+let puntos=0;
+let nivel=1;
+
+let player={
+x:80,
+y:330,
+w:32,
+h:32,
+vx:0,
+vy:0,
+frame:0,
+frameTimer:0
+};
+
+let keys={};
+
+document.addEventListener("keydown",e=>{
+keys[e.key]=true;
+});
+
+document.addEventListener("keyup",e=>{
+keys[e.key]=false;
+});
+
+let platform={x:0,y:380,w:900,h:70};
+
+let toxic=[];
+let recycle=[];
+let door={x:820,y:310,w:50,h:70};
+
+function generarNivel(){
+
+toxic=[];
+recycle=[];
+
+for(let i=0;i<nivel+3;i++){
+toxic.push({x:200+Math.random()*600,y:350});
+}
+
+for(let i=0;i<nivel+2;i++){
+recycle.push({x:200+Math.random()*600,y:350});
+}
+
+}
+
+generarNivel();
+
+function pregunta(){
+
+let q=[
+{
+p:"¿Qué ayuda al planeta?",
+a:["Quemar basura","Reciclar","Tirar plástico"],
+c:1
+},
+{
+p:"¿Qué contamina más?",
+a:["Humo industrial","Árboles","Agua limpia"],
+c:0
+},
+{
+p:"¿Qué reduce CO2?",
+a:["Plantar árboles","Más autos","Plástico"],
+c:0
+},
+{
+p:"¿Qué se debe reciclar?",
+a:["Botellas plásticas","Basura orgánica","Tierra"],
+c:0
+}
+];
+
+let r=q[Math.floor(Math.random()*q.length)];
+
+let resp=prompt(r.p+"\n0:"+r.a[0]+"\n1:"+r.a[1]+"\n2:"+r.a[2]);
+
+if(resp==r.c){
+
+puntos+=50;
+nivel++;
+
+document.getElementById("nivel").textContent=nivel;
+
+alert("¡Correcto! Nivel "+nivel);
+
+generarNivel();
+
+}else{
+
+vida-=20;
+hitSound.play();
+alert("Incorrecto");
+
+}
+
+}
+
+function update(){
+
+if(keys["ArrowRight"]) player.x+=4;
+if(keys["ArrowLeft"]) player.x-=4;
+
+if(keys[" "] && player.vy==0){
+player.vy=-11;
+}
+
+player.vy+=0.5;
+player.y+=player.vy;
+
+if(player.y+player.h>platform.y){
+player.y=platform.y-player.h;
+player.vy=0;
+}
+
+toxic.forEach(t=>{
+
+if(player.x<t.x+20 &&
+player.x+player.w>t.x &&
+player.y<t.y+20 &&
+player.y+player.h>t.y){
+
+vida-=0.3;
+hitSound.play();
+
+}
+
+});
+
+recycle.forEach((r,i)=>{
+
+if(player.x<r.x+20 &&
+player.x+player.w>r.x &&
+player.y<r.y+20 &&
+player.y+player.h>r.y){
+
+puntos+=10;
+
+collectSound.play();
+
+recycle.splice(i,1);
+
+}
+
+});
+
+if(
+player.x<door.x+door.w &&
+player.x+player.w>door.x &&
+player.y<door.y+door.h &&
+player.y+player.h>door.y
+){
+
+pregunta();
+
+player.x=80;
+
+}
+
+document.getElementById("vida").textContent=Math.floor(vida);
+document.getElementById("puntos").textContent=puntos;
+
+document.getElementById("lifeBar").style.width=vida+"%";
+
+if(vida<=0){
+final("💀 GAME OVER<br>Puntos: "+puntos);
+}
+
+if(nivel>6){
+final("🏆 GANASTE<br>Puntos: "+puntos);
+}
+
+}
+
+function draw(){
+
+if(nivel%2==1){
+ctx.fillStyle="#1e293b";
+}else{
+ctx.fillStyle="#166534";
+}
+
+ctx.fillRect(0,0,canvas.width,canvas.height);
+
+ctx.fillStyle="#475569";
+ctx.fillRect(platform.x,platform.y,platform.w,platform.h);
+
+ctx.fillStyle="purple";
+toxic.forEach(t=>{
+ctx.fillRect(t.x,t.y,20,20);
+});
+
+ctx.fillStyle="yellow";
+recycle.forEach(r=>{
+ctx.fillRect(r.x,r.y,20,20);
+});
+
+ctx.fillStyle="red";
+ctx.fillRect(door.x,door.y,door.w,door.h);
+
+ctx.fillStyle="lime";
+ctx.fillRect(player.x,player.y,player.w,player.h);
+
+}
+
+function final(text){
+
+document.getElementById("end").innerHTML=text;
+document.getElementById("end").style.display="block";
+
+throw new Error("fin");
+
+}
+
+function loop(){
+
+update();
+draw();
+requestAnimationFrame(loop);
+
+}
+
+loop();
+
+</script>
+
+</body>
+</html>
